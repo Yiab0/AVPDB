@@ -132,13 +132,13 @@ class RRuleMap(Generic[ValueType]):
 				ans.update(zip(a.between(dtstart, dtend, inc = True), itertools.repeat(b)))
 		return sorted(filter(lambda x: bool(x[1]), map(list, ans.items())), key=lambda x: x[0])
 	
-	def __copy__(self) -> RRuleMap:
+	def __copy__(self) -> 'RRuleMap':
 		"""
 		Makes a copy of this `RRuleMap`. This method is supposed to return a shallow copy, but it returns a deep copy anyway.
 		"""
 		return RRuleMap(self._rulelist, self._timestamp)
 	
-	def __deepcopy__(self, memo: dict = {}) -> RRuleMap:
+	def __deepcopy__(self, memo: dict = {}) -> 'RRuleMap':
 		"""
 		Makes a deep copy of this `RRuleMap`.
 		
@@ -148,13 +148,13 @@ class RRuleMap(Generic[ValueType]):
 		"""
 		return RRuleMap(self._rulelist, self._timestamp)
 	
-	def __getstate__(self) -> Tuple[str, list[Tuple[Union[datetime.datetime, str], Optional[ValueType]]]]:
+	def __getstate__(self) -> tuple[str, list[tuple[Union[datetime.datetime, str], Optional[ValueType]]]]:
 		"""
 		Used for `pickle` serialization.
 		"""
 		return [ self._timestamp, [ [a if isinstance(a, datetime.datetime) else _rrule_tostr(a), b] for a, b in self._rulelist ] ]
 	
-	def __setstate__(self, state: Tuple[str, list[Tuple[Union[datetime.datetime, str], Optional[ValueType]]]]) -> None:
+	def __setstate__(self, state: tuple[str, list[tuple[Union[datetime.datetime, str], Optional[ValueType]]]]) -> None:
 		"""
 		Used for `pickle` serialization.
 		

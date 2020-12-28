@@ -26,7 +26,7 @@ import calendar
 import rrulemap
 import durationparse
 from copy import deepcopy
-from typing import Optional, Union, Callable
+from typing import Optional, Union, Callable, Any
 from collections.abc import Iterable
 
 if os.path.isdir("avpdb"):
@@ -48,7 +48,7 @@ from xdice import roll
 _token = _params.get("DiscordToken")
 _guildname = _params.get("Guild").lower()
 _main_guild = None
-_pantheon = []
+_pantheon = None
 
 _cpx = _params.get("CommandPrefix")
 _max_quote_display = int(_params.get("QuoteDisplayCap"))
@@ -637,7 +637,7 @@ async def getquotenumbers(ctx, user=None):
 			await ctx.send(embed = discord.Embed(title = f"{len(nums)} Quote{'s' if len(nums) > 1 else ''} by {author.display_name}", description = ", ".join(_rangeify(nums))))
 
 @bot.command(aliases=['add_schedule'], brief='Add a new entry or rule to the schedule (restricted).', description='Adds `when` as a new entry in the schedule; `title` is the type of show that happens on that schedule. `when` should be either something which can be interpreted as a `datetime` using `dateutil.parser.parse` ( https://dateutil.readthedocs.io/en/stable/parser.html ) or something which can be interpreted as a recurrence rule using `dateutil.rrule.rrulestr` ( https://dateutil.readthedocs.io/en/stable/rrule.html\n`\n` will be replaced with a newline character before interpretation). (Only available to authorized users.)')
-@commands.check_any(commands.is_owner(), _is_guild_owner(), commands.has_role(_pantheon.name))
+@commands.check_any(commands.is_owner(), _is_guild_owner(), commands.has_role('The Pantheon'))
 async def addschedule(ctx, when, *, title):
 	try:
 		qq = dateutil.parser.parse(when)
@@ -657,7 +657,7 @@ async def addschedule(ctx, when, *, title):
 	await ctx.send(f'Added {title} on schedule {when}.')
 
 @bot.command(aliases=['remove_schedule'], brief='Remove an entry or rule from the schedule (restricted).', description='Removes a new entry in the schedule. `when` should be either something which can be interpreted as a `datetime` using `dateutil.parser.parse` ( https://dateutil.readthedocs.io/en/stable/parser.html ) or something which can be interpreted as a recurrence rule using `dateutil.rrule.rrulestr` ( https://dateutil.readthedocs.io/en/stable/rrule.html\n`\n` will be replaced with a newline character before interpretation). (Only available to authorized users.)')
-@commands.check_any(commands.is_owner(), _is_guild_owner(), commands.has_role(_pantheon.name))
+@commands.check_any(commands.is_owner(), _is_guild_owner(), commands.has_role('The Pantheon'))
 async def removeschedule(ctx, when):
 	try:
 		qq = dateutil.parser.parse(when)
