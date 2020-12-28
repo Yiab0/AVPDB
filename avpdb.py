@@ -62,6 +62,7 @@ _last_brandon = datetime.datetime.now(dateutil.tz.UTC) - 2*_brandon_frequency_ca
 _random_dog_url = "https://api.thedogapi.com/v1/images/search"
 _backup_random_dog_url = "https://dog.ceo/api/breeds/image/random"
 _random_cat_url = "https://api.thecatapi.com/v1/images/search"
+_botsource_url = 'https://github.com/Yiab0/AVPDB'
 _last_connect = datetime.datetime.now(dateutil.tz.UTC)
 _total_uptime = pickle.loads(bytes.fromhex(_params.get('TotalUptime')))
 _goosecifix_url = _params.get("GoosecifixURL")
@@ -707,6 +708,10 @@ async def perversion(ctx, *term):
 @bot.command(aliases=['pain_scale'], brief='Display the AVPSO pain scale.', description='Displays the AVPSO pain scale in chat.')
 async def painscale(ctx):
 	await ctx.send(_painscale_url)
+
+@bot.command(aliases=['bot_source'], brief='Link to the bot\'s source code.', description='Post a link to the Github repository for this bot into the chat.')
+async def botsource(ctx):
+	await ctx.send(_botsource_url)
 
 @bot.listen('on_message')
 async def do_reactions(message):
