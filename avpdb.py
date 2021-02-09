@@ -67,7 +67,7 @@ _last_connect = datetime.datetime.now(dateutil.tz.UTC)
 _total_uptime = pickle.loads(bytes.fromhex(_params.get('TotalUptime')))
 _goosecifix_url = _params.get("GoosecifixURL")
 _showtypes = { 'AVPSO': 'A Very Public Spanking Of (normal show)', 'AVPGO': 'A Very Public Gaming Of (video games)', 'RPG Night': 'RPG Night (Necessary Evil)', 'AVPRO': 'A Very Public Riffing Of (audience participation)', 'impromptu': 'A Very Public Riffing Of (impromptu)' }
-_reaction_patterns = { "Blobbyrape": None, "HONK": None, "Kay": None, "lee": None, "God": None, "spicybeef": None, 'Hesquatch': None, 'Goveganmotherfuckers': None, 'Tim_Noah': None, 'Oogene': None }
+_reaction_patterns = { "Blobbyrape": None, "HONK": None, "Kay": None, "lee": None, "God": None, "spicybeef": None, 'Hesquatch': None, 'Goveganmotherfuckers': None, 'Tim_Noah': None, 'Oogene': None, 'interviewplant': None }
 _fruit_emoji = [ '\N{Green Apple}', '\N{Red Apple}', '\N{Pear}', '\N{Tangerine}', '\N{Lemon}', '\N{Banana}', '\N{Watermelon}', '\N{Grapes}', '\N{Blueberries}', '\N{Strawberry}', '\N{Melon}', '\N{Cherries}', '\N{Peach}', '\N{Mango}', '\N{Pineapple}', '\N{Kiwifruit}', '\N{Tomato}', '\N{Coconut}', '\N{Chicken}', '\N{Avocado}', '\N{Olive}' ]
 _autosave_timer = int(_params.get("AutosaveConfigTimer"))
 _active_links = '\n'.join(map(lambda x: f'{x[0]}: {x[1]}', json.loads(_params['active links'])))
@@ -748,6 +748,8 @@ async def do_reactions(message):
 		await message.add_reaction(_reaction_patterns['Oogene'])
 	if re.search('pain~10(?:\\D|$)', txt):
 		await message.add_reaction(_reaction_patterns['Blobbyrape'])
+	if re.search('interview', txt):
+		await message.add_reaction(_reaction_patterns['interviewplant'])
 
 @bot.listen('on_raw_reaction_add')
 async def quote_by_reaction(payload):
