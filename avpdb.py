@@ -459,7 +459,7 @@ async def reactions(ctx):
 		f"\n{_reaction_patterns['God']}  If you mention Brandon (sometimes)"
 		f'\n{random.choice(_fruit_emoji)}  If you mention chicken'
 		f'\n{_reaction_patterns["spicybeef"]}  If you mention beef'
-		f'\n{self.reaction_patterns["interviewplant"]}  If you mention an interview'
+		f'\n{_reaction_patterns["interviewplant"]}  If you mention an interview'
 		'\nA pain scale reaction if you use the format pain~*n* (where *n* is a number from 0 to 10)'
 	)))
 
