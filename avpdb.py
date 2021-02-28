@@ -718,7 +718,10 @@ async def botsource(ctx):
 @bot.command(brief = 'Show a random nonexistant metal album.', description = 'Randomly chooses one of the AI-generated metal albums (including band name, album title, and album cover art) from Twitter account @ai_metal_bot.')
 async def metal(ctx):
 	a = cursor.execute('SELECT tweetid, band, album FROM albums ORDER BY RANDOM() LIMIT 1').fetchone()
-	await ctx.send(embed = discord.Embed(title = f'Metal Album for {ctx.author.display_name}', description = f'Band: {a[1]}\nAlbum: {a[2]}'), file = discord.File(os.path.join(_album_folder, f'{a[0]}.png')))
+	file = discord.File(os.path.join(_album_folder, f'{a[0]}.png'), filename = 'albumcover.png')
+	embed = discord.Embed(title = f'Metal Album for {ctx.author.display_name}', description = f'Band: {a[1]}\nAlbum: {a[2]}')
+	embed.set_image(url = 'attachment://albumcover.png')
+	await ctx.send(file = file, embed = embed)
 
 @bot.listen('on_message')
 async def do_reactions(message):
@@ -785,14 +788,16 @@ def _fetch_metal() -> None:
 	raw = subprocess.check_output(['snscrape', '--jsonl', 'twitter-user', 'ai_metal_bot'])
 	new_tweets = list(map(json.loads, filter(lambda x: len(x)>0, raw.split(b'\n'))))
 	old_tweet_ids = list(itertools.chain(*cursor.execute('SELECT tweetid FROM albums').fetchall()))
+	count = 0
 	for tw in filter(lambda x: x['id'] not in old_tweet_ids, new_tweets):
 		r = re.fullmatch('(?P<band>[\\w\\s]*) - (?P<album>[\\w\\s]*) https://t.co/\\w*', tw['content'])
 		if bool(r) and len(tw['media']) == 1:
 			with open(os.path.join(_album_folder, f'{tw["id"]}.png'), 'wb') as f:
 				f.write(urllib.request.urlopen(tw['media'][0]['fullUrl']).read())
 			cursor.execute('INSERT INTO albums VALUES(?,?,?)', (tw['id'], r['band'], r['album']))
+			count += 1
 	db.commit()
-	print('Checked for new tweets.')
+	print(f'{_dt_tostr()} Checked for new tweets: {count} new, {len(old_tweet_ids)+count} total.')
 
 @tasks.loop(seconds=43200)
 async def update_metal():
@@ -810,7 +815,6 @@ async def store_config():
 async def before_store_config():
 	await bot.wait_until_ready()
 
-_fetch_metal()
 update_metal.start()
 store_config.start()
 bot.run(_token)
