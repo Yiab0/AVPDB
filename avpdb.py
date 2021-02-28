@@ -73,6 +73,7 @@ _autosave_timer = int(_params.get("AutosaveConfigTimer"))
 _active_links = '\n'.join(map(lambda x: f'{x[0]}: {x[1]}', json.loads(_params['active links'])))
 _inactive_links = '\n'.join(map(lambda x: f'{x[0]}: {x[1]}', json.loads(_params['inactive links'])))
 _schedule = pickle.loads(bytes.fromhex(_params.get('Schedule')))
+_album_folder = 'albumcovers'
 
 _intents = discord.Intents.default()
 _intents.members = True
@@ -121,9 +122,12 @@ cursor.execute("CREATE TABLE IF NOT EXISTS schedule(datetime TEXT, description T
 cursor.execute("CREATE TABLE IF NOT EXISTS smells(name TEXT UNIQUE)")
 cursor.execute("CREATE TABLE IF NOT EXISTS perversions(name TEXT UNIQUE, description TEXT)")
 cursor.execute('CREATE TABLE IF NOT EXISTS users(name TEXT PRIMARY KEY, timezone TEXT)')
+cursor.execute('CREATE TABLE IF NOT EXISTS albums(tweetid INTEGER PRIMARY KEY, band TEXT, album TEXT)')
 print(f"{_dt_tostr()} Loaded quote database.")
 
 db.commit()
+
+os.makedirs(_album_folder, exist_ok = True)
 
 def _is_guild_owner() -> Callable[[discord.ext.commands.Context], bool]:
 	"""
@@ -420,10 +424,7 @@ async def numquotes(ctx, user=None):
 async def logoff(ctx):
 	print(f"{_dt_tostr()} Quitting as instructed by {str(ctx.author)}.")
 	db.close()
-	with _cfg_lock:
-		_params['TotalUptime'] = pickle.dumps(_total_uptime + (datetime.datetime.now(dateutil.tz.UTC) - _last_connect)).hex()
-		with open(_config_filename, "w") as configfile:
-			_cfg.write(configfile)
+	_save_config()
 	await bot.logout()
 
 @bot.command(brief="Display a random dog photo.", help="Find a random photo of a dog through https://thedogapi.com/ or https://dog.ceo/dog-api and display it in chat.")
@@ -714,6 +715,11 @@ async def painscale(ctx):
 async def botsource(ctx):
 	await ctx.send(_botsource_url)
 
+@bot.command(brief = 'Show a random nonexistant metal album.', description = 'Randomly chooses one of the AI-generated metal albums (including band name, album title, and album cover art) from Twitter account @ai_metal_bot.')
+async def metal(ctx):
+	a = cursor.execute('SELECT tweetid, band, album FROM albums ORDER BY RANDOM() LIMIT 1').fetchone()
+	await ctx.send(embed = discord.Embed(title = f'Metal Album for {ctx.author.display_name}', description = f'Band: {a[1]}\nAlbum: {a[2]}'), file = discord.File(os.path.join(_album_folder, f'{a[0]}.png')))
+
 @bot.listen('on_message')
 async def do_reactions(message):
 	if (message.guild != None and message.guild.name.lower() != _guildname) or message.author == bot.user:
@@ -772,6 +778,30 @@ async def quote_by_reaction(payload):
 		else:
 			await channel.send(f"Quote already exists in the database; it is #{b}.")
 
+def _fetch_metal() -> None:
+	"""
+	Looks up and downloads all of the new randomly generated metal albums from @ai_metal_bot on Twitter, storing them in the quote database.
+	"""
+	raw = subprocess.check_output(['snscrape', '--jsonl', 'twitter-user', 'ai_metal_bot'])
+	new_tweets = list(map(json.loads, filter(lambda x: len(x)>0, raw.split(b'\n'))))
+	old_tweet_ids = list(itertools.chain(*cursor.execute('SELECT tweetid FROM albums').fetchall()))
+	for tw in filter(lambda x: x['id'] not in old_tweet_ids, new_tweets):
+		r = re.fullmatch('(?P<band>[\\w\\s]*) - (?P<album>[\\w\\s]*) https://t.co/\\w*', tw['content'])
+		if bool(r) and len(tw['media']) == 1:
+			with open(os.path.join(_album_folder, f'{tw["id"]}.png'), 'wb') as f:
+				f.write(urllib.request.urlopen(tw['media'][0]['fullUrl']).read())
+			cursor.execute('INSERT INTO albums VALUES(?,?,?)', (tw['id'], r['band'], r['album']))
+	db.commit()
+	print('Checked for new tweets.')
+
+@tasks.loop(seconds=43200)
+async def update_metal():
+	_fetch_metal()
+
+@update_metal.before_loop
+async def before_update_metal():
+	await bot.wait_until_ready()
+
 @tasks.loop(seconds=_autosave_timer)
 async def store_config():
 	_save_config()
@@ -780,5 +810,7 @@ async def store_config():
 async def before_store_config():
 	await bot.wait_until_ready()
 
+_fetch_metal()
+update_metal.start()
 store_config.start()
 bot.run(_token)

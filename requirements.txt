@@ -1,3 +1,4 @@
 discord.py
 xdice
 python-dateutil
+git+https://github.com/JustAnotherArchivist/snscrape.git
