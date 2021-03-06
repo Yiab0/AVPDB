@@ -66,7 +66,7 @@ _botsource_url = 'https://github.com/Yiab0/AVPDB'
 _last_connect = datetime.datetime.now(dateutil.tz.UTC)
 _total_uptime = pickle.loads(bytes.fromhex(_params.get('TotalUptime')))
 _goosecifix_url = _params.get("GoosecifixURL")
-_showtypes = { 'AVPSO': 'A Very Public Spanking Of (normal show)', 'AVPGO': 'A Very Public Gaming Of (video games)', 'RPG Night': 'RPG Night (Necessary Evil)', 'AVPRO': 'A Very Public Riffing Of (audience participation)', 'impromptu': 'A Very Public Riffing Of (impromptu)' }
+_showtypes = json.loads(_params['ShowTypes'])
 _reaction_patterns = { "Blobbyrape": None, "HONK": None, "Kay": None, "lee": None, "God": None, "spicybeef": None, 'Hesquatch': None, 'Goveganmotherfuckers': None, 'Tim_Noah': None, 'Oogene': None, 'interviewplant': None }
 _fruit_emoji = [ '\N{Green Apple}', '\N{Red Apple}', '\N{Pear}', '\N{Tangerine}', '\N{Lemon}', '\N{Banana}', '\N{Watermelon}', '\N{Grapes}', '\N{Blueberries}', '\N{Strawberry}', '\N{Melon}', '\N{Cherries}', '\N{Peach}', '\N{Mango}', '\N{Pineapple}', '\N{Kiwifruit}', '\N{Tomato}', '\N{Coconut}', '\N{Chicken}', '\N{Avocado}', '\N{Olive}' ]
 _autosave_timer = int(_params.get("AutosaveConfigTimer"))
@@ -74,6 +74,7 @@ _active_links = '\n'.join(map(lambda x: f'{x[0]}: {x[1]}', json.loads(_params['a
 _inactive_links = '\n'.join(map(lambda x: f'{x[0]}: {x[1]}', json.loads(_params['inactive links'])))
 _schedule = pickle.loads(bytes.fromhex(_params.get('Schedule')))
 _album_folder = 'albumcovers'
+_rpg_status = json.loads(_params.get('RPGStatus','{}'))
 
 _intents = discord.Intents.default()
 _intents.members = True
@@ -85,6 +86,7 @@ def _save_config() -> None:
 	"""
 	with _cfg_lock:
 		_params['TotalUptime'] = pickle.dumps(_total_uptime + (datetime.datetime.now(dateutil.tz.UTC) - _last_connect)).hex()
+		_params['RPGStatus'] = json.dumps(_rpg_status)
 		with open(_config_filename, "w") as configfile:
 			_cfg.write(configfile)
 			print(f"{_dt_tostr()} Saved configuration.")
@@ -574,11 +576,11 @@ async def schedule(ctx, *args):
 	timezone, starttime, endtime = _schedule_argparse(_get_user_timezone(ctx.author), *args)
 	today = datetime.datetime.now(timezone)
 	if starttime <= today <= endtime:
-		show_list = sorted(map(lambda x: [ x[0].astimezone(timezone), _showtypes.get(x[1], x[1]) ], _schedule.between(starttime, endtime) + [[today, 'Now']]))
+		show_list = sorted(map(lambda x: [ x[0].astimezone(timezone), _showtypes.get(x[1].upper(), x[1]) ], _schedule.between(starttime, endtime) + [[today, 'Now']]))
 		future = list(filter(lambda x: x > today, map(lambda x: x[0], show_list)))
 		next_show = min(future) if len(future) > 0 else None
 	else:
-		show_list = sorted(map(lambda x: [ x[0].astimezone(timezone), _showtypes.get(x[1], x[1]) ], _schedule.between(starttime, endtime)))
+		show_list = sorted(map(lambda x: [ x[0].astimezone(timezone), _showtypes.get(x[1].upper(), x[1]) ], _schedule.between(starttime, endtime)))
 		next_show = None
 	await ctx.send(embed = discord.Embed(title = f'AVPSO Schedule (TZ: {rrulemap._tz_tostr(timezone)})', description = '\n'.join([ f'{"**" if a == today else ""}{a.strftime(_timestamp_unzoned)}: {b}{"**" if a == today else ""}' for a, b in show_list ]) + ('' if next_show == None else f'\n\n{round_to_second(next_show-today)} remaining until the next show.')))
 
@@ -639,7 +641,7 @@ async def getquotenumbers(ctx, user=None):
 		else:
 			await ctx.send(embed = discord.Embed(title = f"{len(nums)} Quote{'s' if len(nums) > 1 else ''} by {author.display_name}", description = ", ".join(_rangeify(nums))))
 
-@bot.command(aliases=['add_schedule'], brief='Add a new entry or rule to the schedule (restricted).', description='Adds `when` as a new entry in the schedule; `title` is the type of show that happens on that schedule. `when` should be either something which can be interpreted as a `datetime` using `dateutil.parser.parse` ( https://dateutil.readthedocs.io/en/stable/parser.html ) or something which can be interpreted as a recurrence rule using `dateutil.rrule.rrulestr` ( https://dateutil.readthedocs.io/en/stable/rrule.html\n`\n` will be replaced with a newline character before interpretation). (Only available to authorized users.)')
+@bot.command(aliases=['add_schedule'], brief='Add a new entry or rule to the schedule (restricted).', description='Adds `when` as a new entry in the schedule; `title` is the type of show that happens on that schedule. `when` should be either something which can be interpreted as a `datetime` using `dateutil.parser.parse` ( https://dateutil.readthedocs.io/en/stable/parser.html ) or something which can be interpreted as a recurrence rule using `dateutil.rrule.rrulestr` ( https://dateutil.readthedocs.io/en/stable/rrule.html\n`\\n` will be replaced with a newline character before interpretation). (Only available to authorized users.)')
 @commands.check_any(commands.is_owner(), _is_guild_owner(), commands.has_role('The Pantheon'))
 async def addschedule(ctx, when, *, title):
 	try:
@@ -722,6 +724,62 @@ async def metal(ctx):
 	embed = discord.Embed(title = f'Metal Album for {ctx.author.display_name}', description = f'Band: {a[1]}\nAlbum: {a[2]}')
 	embed.set_image(url = 'attachment://albumcover.png')
 	await ctx.send(file = file, embed = embed)
+
+@bot.command(hidden = True, aliases = [ 'add_abbr' ], description = 'Adds a new abbreviated form of show type to the list.', brief = 'Adds a new abbreviated form of show type to the list.')
+@commands.is_owner()
+async def addabbr(ctx, abbr, *, term):
+	_showtypes[abbr.upper()] = term
+	_save_config()
+	await ctx.send(f'Added {abbr.upper()} as an abbreviated show type for "{term}"')
+
+@bot.command(hidden = True, aliases = [ 'get_abbr' ], brief = 'Show current abbreviated show types.', description = 'Show current abbreviated show types. If you specify an abbreviation, only shows that (if it exists).')
+@commands.is_owner()
+async def getabbr(ctx, abbr = None):
+	if abbr == None:
+		await ctx.send(embed = discord.Embed(title = 'Current Abbreviations', description = '\n'.join(map(lambda x: f'{x}: {_showtypes[x]}', sorted(_showtypes.keys())))))
+	elif abbr.upper() in _showtypes:
+		await ctx.send(f'{abbr.upper()} is an abbreviation for "{_showtypes[abbr.upper()]}"')
+	else:
+		await ctx.send(f'{abbr.upper()} is not currently an abbreviation.')
+
+@bot.command(hidden = True, aliases = [ 'del_abbr' ], description = 'Delete an abbreviated show type.', brief = 'Delete an abbreviated show type.')
+@commands.is_owner()
+async def delabbr(ctx, abbr):
+	if abbr.upper() in _showtypes:
+		del _showtypes[abbr.upper()]
+		await ctx.send(f'Deleted {abbr.upper()}.')
+	else:
+		await ctx.send(f'{abbr.upper()} is not currently an abbreviation.')
+
+@bot.command(aliases = [ 'rpg_status' ], brief = 'Status of show-related RPGs', description = 'Lists the show-related RPGs together with their current status.')
+async def rpgstatus(ctx):
+	await ctx.send(embed = discord.Embed(title = 'Status of RPGs', description = '\n'.join(map(lambda x: f'*{x}* : {_rpg_status[x]}', sorted(_rpg_status.keys())))))
+
+@bot.command(aliases = [ 'set_rpgstatus', 'set_rpg_status' ], brief = 'Set the status of a show-related RPG (restricted).', description = 'Set the status of a show-related RPG, or add it if it wasn\'t already present. If the status is set to DELETE, the RPG is deleted from the list instead. (Only available to authorized users.)\nNote: Names of RPGs are case-sensitive.')
+@commands.check_any(commands.is_owner(), _is_guild_owner())
+async def setrpgstatus(ctx, rpg, *, status):
+	if len(status) == 0:
+		await ctx.send('RPG status is not allowed to be blank.')
+	elif rpg in _rpg_status:
+		if status == 'DELETE':
+			del _rpg_status[rpg]
+			_save_config()
+			await ctx.send(f'Deleted {rpg} from the list.')
+		else:
+			_rpg_status[rpg] = status
+			_save_config()
+			await ctx.send(f'Changed the status of {rpg} to {status}')
+	elif status == 'DELETE':
+		await ctx.send(f'There is no RPG named {rpg}, so it cannot be deleted.')
+	else:
+		_rpg_status[rpg] = status
+		_save_config()
+		await ctx.send(f'Added {rpg} with status {status}')
+
+@bot.command(hidden = True, aliases = [ 'op_help', 'modhelp', 'mod_help' ], description = 'List all hidden commands.', brief = 'List all hidden commands.')
+@commands.check_any(commands.is_owner(), _is_guild_owner())
+async def ophelp(ctx):
+	await ctx.send('```Type ~help for a list of visible commands, type ~ophelp for a list of hidden commands.\n\n' + '\n'.join(map(lambda x: f'  {x.name}\t{x.brief}', filter(lambda x: x.hidden, sorted(bot.commands, key = lambda x: x.name)))) + '```')
 
 @bot.listen('on_message')
 async def do_reactions(message):
