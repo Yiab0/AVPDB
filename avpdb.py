@@ -38,7 +38,8 @@ _cfg.read(_config_filename)
 _params = _cfg["AVPDB"]
 _cfg_lock = threading.RLock()
 
-subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt'])
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt', '--upgrade'])
+#subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'discord.py', 'xdice', 'python-dateutil'])
 
 import dateutil.parser, dateutil.rrule, dateutil.tz
 import discord
@@ -275,21 +276,21 @@ async def on_ready() -> None:
 @bot.command(aliases=['add_alias'], brief="Adds an alias for a user.", help="Adds an alias for a user. The alias must be alphamuneric and begin with a letter. Aliases are not case sensitive.")
 async def addalias(ctx, alias, username):
 	if len(alias) == 0 or (not alias.isalnum()) or (not alias[0].isalpha()):
-		await ctx.send("You can only associate aliases which are alphanumeric and begin with a letter.")
+		await ctx.reply("You can only associate aliases which are alphanumeric and begin with a letter.")
 		return
 	q = cursor.execute("SELECT * FROM aliases WHERE alias=? LIMIT 1", (alias.lower(),)).fetchone()
 	if q != None:
-		await ctx.send(f"{q[0]} is already an alias for {q[1]}.")
+		await ctx.reply(f"{q[0]} is already an alias for {q[1]}.")
 		return
 	user = find_user(username)
 	if user == None:
-		await ctx.send(f"Cannot find a user named {username}.")
+		await ctx.reply(f"Cannot find a user named {username}.")
 		return
 	cursor.execute("INSERT INTO aliases VALUES(?,?)", (alias.lower(), str(user)))
 	cursor.execute("UPDATE quotes SET user=? WHERE LOWER(user)=?", (str(user), alias.lower()))
-	await ctx.send(f"Successfully added {alias} as an alias for {mention_or_str(user)}.")
+	await ctx.reply(f"Successfully added {alias} as an alias for {mention_or_str(user)}.")
 	if cursor.rowcount > 0:
-		await ctx.send(f"Reattributed {str(cursor.rowcount)} old quote{'' if cursor.rowcount == 1 else 's'} to {mention_or_str(user)}.")
+		await ctx.reply(f"Reattributed {str(cursor.rowcount)} old quote{'' if cursor.rowcount == 1 else 's'} to {mention_or_str(user)}.")
 	db.commit()
 
 @bot.command(aliases=['get_alias'], brief="What aliases a user has.", help="Retrieves aliases associated with the given username or alias.")
@@ -297,20 +298,20 @@ async def getalias(ctx, name):
 	user = to_user(name)
 	aliases = cursor.execute("SELECT alias FROM aliases WHERE user=?", (str(user),)).fetchall()
 	if len(aliases) == 0:
-		await ctx.send(f"There are no aliases in the database for {mention_or_str(user)}.")
+		await ctx.reply(f"There are no aliases in the database for {mention_or_str(user)}.")
 		return
-	await ctx.send(embed=discord.Embed(title=f"Aliases of {getattr(user,'display_name',str(user))}", description=", ".join([ q[0] for q in aliases ] + [ mention_or_str(user) ])))
+	await ctx.reply(embed=discord.Embed(title=f"Aliases of {getattr(user,'display_name',str(user))}", description=", ".join([ q[0] for q in aliases ] + [ mention_or_str(user) ])))
 
 @bot.command(aliases=['del_alias'], brief="Deletes an alias (restricted).", help="Deletes an alias from the database (only available to authorized users).")
 @commands.is_owner()
 async def delalias(ctx, name):
 	cursor.execute("DELETE FROM aliases WHERE alias=?", (name.lower(),))
 	if cursor.rowcount == 1:
-		await ctx.send(f"Deleted the alias {name.lower()}")
+		await ctx.reply(f"Deleted the alias {name.lower()}")
 	elif cursor.rowcount == 0:
-		await ctx.send(f"There is no alias in the database for {name.lower()}.")
+		await ctx.reply(f"There is no alias in the database for {name.lower()}.")
 	else:
-		await ctx.send(f"Deleted (somehow) {str(cursor.rowcount)} aliase{'' if cursor.rowcount == 1 else 's'} for {name.lower()}.")
+		await ctx.reply(f"Deleted (somehow) {str(cursor.rowcount)} aliase{'' if cursor.rowcount == 1 else 's'} for {name.lower()}.")
 
 @bot.command(brief='Reattributes all quotes correctly (restricted).', help='Reattributes all quotes in the database to the appropriate usernames based on the current alias table (only available to authorized users).', hidden=True)
 @commands.is_owner()
@@ -322,25 +323,25 @@ async def reattribute(ctx):
 		if n != nn:
 			q = cursor.execute('UPDATE quotes SET user=? WHERE user=?',(nn, n)).rowcount
 			if q > 0:
-				await ctx.send(f'Reattributed {str(q)} quote{"" if q == 1 else "s"} from {n} to {mention_or_str(n3)}.')
-	await ctx.send('Finished total attribution re-check.')
+				await ctx.reply(f'Reattributed {str(q)} quote{"" if q == 1 else "s"} from {n} to {mention_or_str(n3)}.')
+	await ctx.reply('Finished total attribution re-check.')
 
 @bot.command(help="Ping the bot.")
 async def ping(ctx):
-	await ctx.send(f"{ctx.author.mention} pong")
+	await ctx.reply(f"{ctx.author.mention} pong")
 	print(f"{_dt_tostr()} Ping sent from {str(ctx.author)}.")
 
 @bot.command(aliases=['add_quote'], brief="Add a quote by a user to the database.", help="Adds the message to the database as a quote attributed to the specified user. Will check for duplicate quotes by the same user.")
 async def addquote(ctx, user, *, message):
 	if len(message) == 0:
-		await ctx.send(f"The correct syntax is ```{_cpx}addquote *user* *message*```")
+		await ctx.reply(f"The correct syntax is ```{_cpx}addquote *user* *message*```")
 	else:
 		author = to_user(user)
 		a,b = insert_quote(author, message)
 		if a:
-			await ctx.send(f"Successfully attributed quote #{b} to {mention_or_str(author)}.")
+			await ctx.reply(f"Successfully attributed quote #{b} to {mention_or_str(author)}.")
 		else:
-			await ctx.send(f"Quote already exists in the database; it is #{b}.")
+			await ctx.reply(f"Quote already exists in the database; it is #{b}.")
 
 @bot.command(aliases=['get_quote'], brief="Retrieves a random or specified quote.", help="Retrieves a random quote by the target user (optional; any random quote if omitted), or the quote with the specified number.")
 async def getquote(ctx, target=None):
@@ -348,7 +349,7 @@ async def getquote(ctx, target=None):
 		cursor.execute("SELECT ROWID, user, message, date_added FROM quotes ORDER BY RANDOM() LIMIT 1")
 		q = cursor.fetchone()
 		if q == None:
-			await ctx.send("The database has no quotes.")
+			await ctx.reply("The database has no quotes.")
 			return
 	elif target.isdecimal() or (target.startswith('#') and target[1:].isdecimal()):
 		num = target
@@ -357,40 +358,40 @@ async def getquote(ctx, target=None):
 		cursor.execute("SELECT ROWID, user, message, date_added FROM quotes WHERE ROWID=? LIMIT 1", (num,))
 		q = cursor.fetchone()
 		if q == None:
-			await ctx.send(f"The database has no quote numbered {num}.")
+			await ctx.reply(f"The database has no quote numbered {num}.")
 			return
 	else:
 		user = to_user(target)
 		cursor.execute("SELECT ROWID, user, message, date_added FROM quotes WHERE user=? ORDER BY RANDOM() LIMIT 1", (str(user),))
 		q = cursor.fetchone()
 		if q == None:
-			await ctx.send(f"The database has no quotes from {mention_or_str(user)}.")
+			await ctx.reply(f"The database has no quotes from {mention_or_str(user)}.")
 			return
-	await ctx.send(embed=format_quote(q))
+	await ctx.reply(embed=format_quote(q))
 
 @bot.command(aliases=['del_quote'], brief="Delete a quote (restricted).", help="Deletes quote numbered <quote_number> from the database (only available to authorized users).")
 @commands.is_owner()
 async def delquote(ctx, quote_number):
 	if quote_number == None or len(quote_number) == 0:
-		await ctx.send(f"The correct syntax is ```{_cpx}delquote *number*```")
+		await ctx.reply(f"The correct syntax is ```{_cpx}delquote *number*```")
 		return
 	if quote_number.isdecimal():
 		cursor.execute("DELETE FROM quotes WHERE ROWID=?", (quote_number,))
 		if cursor.rowcount == 1:
-			await ctx.send(f"Deleted quote #{quote_number}.")
+			await ctx.reply(f"Deleted quote #{quote_number}.")
 		elif cursor.rowcount > 1:
-			await ctx.send(f"Deleted (somehow) {str(cursor.rowcount)} quotes numbered {quote_number}.")
+			await ctx.reply(f"Deleted (somehow) {str(cursor.rowcount)} quotes numbered {quote_number}.")
 		else:
-			await ctx.send("Can't find a quote with that number to delete.")
+			await ctx.reply("Can't find a quote with that number to delete.")
 		db.commit()
 
 @bot.command(aliases=["r","dice",'rolldice','roll'], brief="Roll dice.", help="Rolls the given dice and prints the result to chat. This operation passes everything following the command to the xdice package; see https://xdice.readthedocs.io/en/latest/index.html for details. This is intended to be replaced in the future.")
 async def roll_dice(ctx, *, dice_string):
 	result = roll(dice_string)
-	embed = discord.Embed(title=f"{ctx.author.display_name} rolls `{dice_string}`", description=f"**Detailed Result**:\n```{result.format()}```\n **Final Result**:")
+	embed = discord.Embed(title=f"Roll: `{dice_string}`", description=f"**Detailed Result**:\n```{result.format()}```\n **Final Result**:")
 	embed.set_thumbnail(url="http://www.clker.com/cliparts/I/9/a/q/3/S/twenty-sided-dice-th.png")
 	embed.set_image(url=f"https://dummyimage.com/512x128/d3/228b22&text={str(result)}")
-	await ctx.send(embed=embed)
+	await ctx.reply(embed=embed)
 
 @bot.command(aliases=["getquotes",'get_quotes_by','get_quotes'], brief=f"Retrieves all quotes (max {_max_quote_display}) by the user.", help=f"Retrieves all quotes by the specified user. If there are more than {_max_quote_display} such quotes in the database, returns {_max_quote_display} random ones.")
 async def getquotesby(ctx, user):
@@ -398,10 +399,10 @@ async def getquotesby(ctx, user):
 	cursor.execute("SELECT ROWID, user, message, date_added FROM quotes WHERE user=? ORDER BY RANDOM() LIMIT ? ", (str(author), str(_max_quote_display)))
 	res = cursor.fetchall()
 	if len(res) == 0:
-		await ctx.send(f"There are no quotes attributed to {mention_or_str(author)}.")
+		await ctx.reply(f"There are no quotes attributed to {mention_or_str(author)}.")
 	else:
 		for q in res:
-			await ctx.send(embed=format_quote(q))
+			await ctx.reply(embed=format_quote(q))
 
 @bot.command(aliases=['num_quotes'], brief="Says how many quotes are in the database.", help="Retrieves the number of quotes and number of users in the database. If a user is specified, retrieves the number of quotes by that user.")
 async def numquotes(ctx, user=None):
@@ -409,17 +410,17 @@ async def numquotes(ctx, user=None):
 		cursor.execute("SELECT COUNT(*) FROM quotes GROUP BY user")
 		u = cursor.fetchall()
 		u = [ a[0] for a in u ]
-		await ctx.send(f"There are {sum(u)} quotes in the database attributed to {len(u)} users.")
+		await ctx.reply(f"There are {sum(u)} quotes in the database attributed to {len(u)} users.")
 	else:
 		author = to_user(user)
 		cursor.execute("SELECT COUNT(*) FROM quotes WHERE user=? GROUP BY user", (str(author),))
 		u = cursor.fetchall()
 		if len(u) == 0:
-			await ctx.send(f"There are no quotes in the database attributed to {mention_or_str(author)}.")
+			await ctx.reply(f"There are no quotes in the database attributed to {mention_or_str(author)}.")
 		elif u[0][0] == 1:
-			await ctx.send(f"There is 1 quote in the database attributed to {mention_or_str(author)}.")
+			await ctx.reply(f"There is 1 quote in the database attributed to {mention_or_str(author)}.")
 		else:
-			await ctx.send(f"There are {u[0][0]} quotes in the database attributed to {mention_or_str(author)}.")
+			await ctx.reply(f"There are {u[0][0]} quotes in the database attributed to {mention_or_str(author)}.")
 
 @bot.command(aliases=['log_off'], hidden=True, brief="Logs the bot off (restricted).", help="Logs the bot off (only available to authorized users).")
 @commands.check_any(commands.is_owner(), _is_guild_owner())
@@ -433,29 +434,29 @@ async def logoff(ctx):
 async def dog(ctx):
 	resp = json.loads(urllib.request.urlopen(_random_dog_url).read())
 	if len(resp) > 0:
-		await ctx.send(resp[0]["url"])
+		await ctx.reply(resp[0]["url"])
 	else:
 		resp = json.loads(urllib.request.urlopen(_backup_random_dog_url).read())
 		if "message" in resp:
-			await ctx.send(resp["message"])
+			await ctx.reply(resp["message"])
 		else:
-			await ctx.send("Dog APIs are unreachable at the moment.")
+			await ctx.reply("Dog APIs are unreachable at the moment.")
 
 @bot.command(brief="Display a random cat photo.", help="Find a random photo of a cat through https://thecatapi.com/ and display it in chat.")
 async def cat(ctx):
 	resp = json.loads(urllib.request.urlopen(_random_cat_url).read())
 	if len(resp) > 0:
-		await ctx.send(resp[0]["url"])
+		await ctx.reply(resp[0]["url"])
 	else:
-		await ctx.send("Cat API is unreachable at the moment.")
+		await ctx.reply("Cat API is unreachable at the moment.")
 
 @bot.command(brief="Pick one item from a comma-separated list.", help="Randomly selects one of the provided things, separated by commas.")
 async def choose(ctx, *things):
-	await ctx.send(embed=discord.Embed(title=f"{ctx.author.display_name}'s choice", description=random.choice([ a.strip() for a in "".join(things).split(",") ])))
+	await ctx.reply(embed=discord.Embed(description=random.choice([ a.strip() for a in "".join(things).split(",") ])))
 
 @bot.command(brief="Lists the ways this bot reacts", help="Explains which ways this bot reacts, in other ways than to commands.")
 async def reactions(ctx):
-	await ctx.send(embed = discord.Embed(title="Bot reactions", description=(f"{_reaction_patterns['Blobbyrape']}  If you mention Blobby"
+	await ctx.reply(embed = discord.Embed(title="Bot reactions", description=(f"{_reaction_patterns['Blobbyrape']}  If you mention Blobby"
 		f"\n{_reaction_patterns['HONK']}  If you mention geese"
 		f"\n{_reaction_patterns['Kay']}  If you mention cooking"
 		f"\n{_reaction_patterns['lee']}  If you mention eating"
@@ -469,9 +470,9 @@ async def reactions(ctx):
 @bot.command(brief="Where you can find the show.", help=f"Lists the various places online to find information about AVPSO.\nType '{_cpx}info deprecated' for out of date information.")
 async def info(ctx, param=""):
 	if param.lower() == "deprecated":
-		await ctx.send(embed = discord.Embed(title = 'AVPSO (deprecated)', description = _inactive_links))
+		await ctx.reply(embed = discord.Embed(title = 'AVPSO (deprecated)', description = _inactive_links))
 	else:
-		await ctx.send(embed = discord.Embed(title = 'AVPSO', description = _active_links))
+		await ctx.reply(embed = discord.Embed(title = 'AVPSO', description = _active_links))
 
 def round_to_second(d: datetime.timedelta) -> datetime.timedelta:
 	"""
@@ -486,7 +487,7 @@ def round_to_second(d: datetime.timedelta) -> datetime.timedelta:
 @bot.command(brief="The bot's uptime.", help="The bot's current uptime.")
 async def uptime(ctx):
 	temp = datetime.datetime.now(dateutil.tz.UTC) - _last_connect
-	await ctx.send(embed = discord.Embed(title = f"{bot.user.name}'s uptime", description = f"Current uptime: {round_to_second(temp)}\nTotal uptime: {round_to_second(_total_uptime + temp)}"))
+	await ctx.reply(embed = discord.Embed(title = f"{bot.user.name}'s uptime", description = f"Current uptime: {round_to_second(temp)}\nTotal uptime: {round_to_second(_total_uptime + temp)}"))
 
 def _get_user_timezone(user: Union[discord.User, discord.Member], default: Optional[datetime.tzinfo] = dateutil.tz.UTC) -> Optional[datetime.tzinfo]:
 	"""
@@ -510,16 +511,16 @@ async def gettimezone(ctx, user = None):
 		target = ctx.author
 	tz = _get_user_timezone(target, None)
 	if tz:
-		await ctx.send(f'Time zone for {mention_or_str(target)} is {rrulemap._tz_tostr(tz)}')
+		await ctx.reply(f'Time zone for {mention_or_str(target)} is {rrulemap._tz_tostr(tz)}')
 	else:
-		await ctx.send(f'Time zone for {mention_or_str(target)} is UTC (default).')
+		await ctx.reply(f'Time zone for {mention_or_str(target)} is UTC (default).')
 
 @bot.command(aliases=['set_timezone','set_time_zone'], brief='Set someone\'s time zone (partially restricted).', help=f'Sets `user`\'s time zone to `timezone` in the bot\'s database. If `user` is omitted, sets the time zone for the user who issued the command. See {_timezone_url} for time zone names. Anyone can set their own time zone, but only authorized users can set someone else\'s time zone.')
 async def settimezone(ctx, timezone, user = None):
 	if user:
 		target = to_user(user)
 		if ctx.author.id != bot.owner_id and not (isinstance(ctx.author, discord.Member) and _pantheon in ctx.author.roles) and ctx.author != target:
-			await ctx.send(f'Only members of the pantheon, the guild owner, and the bot\'s owner can set other users\' time zones.')
+			await ctx.reply(f'Only members of the pantheon, the guild owner, and the bot\'s owner can set other users\' time zones.')
 			return
 	else:
 		target = ctx.author
@@ -527,9 +528,9 @@ async def settimezone(ctx, timezone, user = None):
 	if tz:
 		cursor.execute('INSERT INTO users(name,timezone) VALUES(?,?) ON CONFLICT(name) DO UPDATE SET timezone=?',(str(target),rrulemap._tz_tostr(tz),rrulemap._tz_tostr(tz)))
 		db.commit()
-		await ctx.send(f'Time zone for {mention_or_str(target)} is now set to {rrulemap._tz_tostr(tz)}.')
+		await ctx.reply(f'Time zone for {mention_or_str(target)} is now set to {rrulemap._tz_tostr(tz)}.')
 	else:
-		await ctx.send(f'Unable to interpret {timezone} as a time zone. Please see {_timezone_url} for a list of canonical names for time zones.')
+		await ctx.reply(f'Unable to interpret {timezone} as a time zone. Please see {_timezone_url} for a list of canonical names for time zones.')
 
 def _schedule_argparse(authortz: Optional[datetime.tzinfo], *args: list[str]) -> tuple[datetime.tzinfo, datetime.datetime, datetime.datetime]:
 	"""
@@ -582,14 +583,14 @@ async def schedule(ctx, *args):
 	else:
 		show_list = sorted(map(lambda x: [ x[0].astimezone(timezone), _showtypes.get(x[1].upper(), x[1]) ], _schedule.between(starttime, endtime)))
 		next_show = None
-	await ctx.send(embed = discord.Embed(title = f'AVPSO Schedule (TZ: {rrulemap._tz_tostr(timezone)})', description = '\n'.join([ f'{"**" if a == today else ""}{a.strftime(_timestamp_unzoned)}: {b}{"**" if a == today else ""}' for a, b in show_list ]) + ('' if next_show == None else f'\n\n{round_to_second(next_show-today)} remaining until the next show.')))
+	await ctx.reply(embed = discord.Embed(title = f'AVPSO Schedule (TZ: {rrulemap._tz_tostr(timezone)})', description = '\n'.join([ f'{"**" if a == today else ""}{a.strftime(_timestamp_unzoned)}: {b}{"**" if a == today else ""}' for a, b in show_list ]) + ('' if next_show == None else f'\n\n{round_to_second(next_show-today)} remaining until the next show.')))
 
 @bot.command(hidden=True, brief="Display the Goosecifix.", description="Display the Goosecifix.")
 async def goosecifix(ctx):
 	cursor.execute("SELECT latin FROM honcs ORDER BY RANDOM() LIMIT 1")
 	embed = discord.Embed(title = cursor.fetchone()[0])
 	embed.set_image(url=_goosecifix_url)
-	await ctx.send(embed=embed)
+	await ctx.reply(embed=embed)
 
 @bot.command(aliases=['add_honc'], hidden=True, brief="Adds a new HONC (restricted).", description="Adds a new HONC (only available to authorized users).")
 @commands.is_owner()
@@ -597,7 +598,7 @@ async def addhonc(ctx, author, latin, english):
 	user = to_user(author)
 	cursor.execute("INSERT INTO honcs VALUES(?,?,?)", (latin, english, str(user)))
 	db.commit()
-	await ctx.send("Done.")
+	await ctx.reply("Done.")
 
 def _rangeify(nums: Iterable[int]) -> list[str]:
 	"""
@@ -631,15 +632,15 @@ async def getquotenumbers(ctx, user=None):
 		for a, b in cursor.fetchall():
 			c = find_user(a)
 			lines.append(f"{b} quote{' is' if b == 1 else 's are'} attributed to {a if c == None else c.display_name}")
-		await ctx.send(embed = discord.Embed(title = "Quote Counts", description = "\n".join(lines)))
+		await ctx.reply(embed = discord.Embed(title = "Quote Counts", description = "\n".join(lines)))
 	else:
 		author = to_user(user)
 		cursor.execute("SELECT ROWID FROM quotes WHERE user=?", (str(author),))
 		nums = list(itertools.chain.from_iterable(cursor.fetchall()))
 		if len(nums) == 0:
-			await ctx.send(f"There are no quotes in the database by {mention_or_str(author)}.")
+			await ctx.reply(f"There are no quotes in the database by {mention_or_str(author)}.")
 		else:
-			await ctx.send(embed = discord.Embed(title = f"{len(nums)} Quote{'s' if len(nums) > 1 else ''} by {author.display_name}", description = ", ".join(_rangeify(nums))))
+			await ctx.reply(embed = discord.Embed(title = f"{len(nums)} Quote{'s' if len(nums) > 1 else ''} by {author.display_name}", description = ", ".join(_rangeify(nums))))
 
 @bot.command(aliases=['add_schedule'], brief='Add a new entry or rule to the schedule (restricted).', description='Adds `when` as a new entry in the schedule; `title` is the type of show that happens on that schedule. `when` should be either something which can be interpreted as a `datetime` using `dateutil.parser.parse` ( https://dateutil.readthedocs.io/en/stable/parser.html ) or something which can be interpreted as a recurrence rule using `dateutil.rrule.rrulestr` ( https://dateutil.readthedocs.io/en/stable/rrule.html\n`\\n` will be replaced with a newline character before interpretation). (Only available to authorized users.)')
 @commands.check_any(commands.is_owner(), _is_guild_owner(), commands.has_role('The Pantheon'))
@@ -654,12 +655,12 @@ async def addschedule(ctx, when, *, title):
 			if not qq._tzinfo:
 				qq = qq.replace(dtstart = qq._dtstart.replace(tzinfo = _get_user_timezone(ctx.author)))
 		except ValueError:
-			await ctx.send(f'Can\'t interpret {when} as either a datetime or a recurrence rule.')
+			await ctx.reply(f'Can\'t interpret {when} as either a datetime or a recurrence rule.')
 			return
 	_schedule.add(qq, title)
 	_params['Schedule'] = pickle.dumps(_schedule).hex()
 	_save_config()
-	await ctx.send(f'Added {title} on schedule {when}.')
+	await ctx.reply(f'Added {title} on schedule {when}.')
 
 @bot.command(aliases=['remove_schedule'], brief='Remove an entry or rule from the schedule (restricted).', description='Removes a new entry in the schedule. `when` should be either something which can be interpreted as a `datetime` using `dateutil.parser.parse` ( https://dateutil.readthedocs.io/en/stable/parser.html ) or something which can be interpreted as a recurrence rule using `dateutil.rrule.rrulestr` ( https://dateutil.readthedocs.io/en/stable/rrule.html\n`\n` will be replaced with a newline character before interpretation). (Only available to authorized users.)')
 @commands.check_any(commands.is_owner(), _is_guild_owner(), commands.has_role('The Pantheon'))
@@ -674,27 +675,27 @@ async def removeschedule(ctx, when):
 			if not qq._tzinfo:
 				qq = qq.replace(dtstart = qq._dtstart.replace(tzinfo = _get_user_timezone(ctx.author)))
 		except ValueError:
-			await ctx.send(f'Can\'t interpret {when} as either a datetime or a recurrence rule.')
+			await ctx.reply(f'Can\'t interpret {when} as either a datetime or a recurrence rule.')
 			return
 	_schedule.remove(qq)
 	_params['Schedule'] = pickle.dumps(_schedule).hex()
 	_save_config()
-	await ctx.send(f'Removed {when} from the schedule.')
+	await ctx.reply(f'Removed {when} from the schedule.')
 
 @bot.command(aliases=['get_smell'], brief="Pick a smell at random.", description="Selects one smell from the list at random.")
 async def getsmell(ctx):
 	cursor.execute("SELECT * FROM smells ORDER BY RANDOM() LIMIT 1")
 	a = cursor.fetchone()
-	await ctx.send(f"Smell for {ctx.author.mention}: {a[0]}")
+	await ctx.reply(a[0])
 
 @bot.command(aliases=['add_smell'], brief="Adds a smell to the list.", description="Adds a new smell to the list, if it is not already present.")
 async def addsmell(ctx, *, newsmell):
 	try:
 		cursor.execute("INSERT INTO smells VALUES(?)",(newsmell,))
 		db.commit()
-		await ctx.send("Added new smell to the list.")
+		await ctx.reply("Added new smell to the list.")
 	except sqlite3.IntegrityError:
-		await ctx.send("Failed to add new smell; it is already in the list.")
+		await ctx.reply("Failed to add new smell; it is already in the list.")
 
 @bot.command(brief="Pick a random perversion.", description="Picks a random sexual fetish, kink, or paraphilia from a fixed list.\nNote: This list does not distinguish between fetishes, kinks, and paraphilias; they are each called 'perversions'.\nThis list has been gathered from the Wikipedia page on paraphilias and the following link: https://badgirlsbible.com/list-of-kinks-and-fetishes")
 async def perversion(ctx, *term):
@@ -705,81 +706,101 @@ async def perversion(ctx, *term):
 		cursor.execute("SELECT name, description FROM perversions WHERE LOWER(name)=?",(" ".join(term).lower(),))
 		a = cursor.fetchall()
 	if len(a) == 0:
-		await ctx.send("Can't find a term by that name.")
+		await ctx.reply("Can't find a term by that name.")
 	else:
-		await ctx.send(embed=discord.Embed(title=a[0][0], description=a[0][1]))
+		await ctx.reply(embed=discord.Embed(title=a[0][0], description=a[0][1]))
 
 @bot.command(aliases=['pain_scale'], brief='Display the AVPSO pain scale.', description='Displays the AVPSO pain scale in chat.')
 async def painscale(ctx):
-	await ctx.send(_painscale_url)
+	await ctx.reply(_painscale_url)
 
 @bot.command(aliases=['bot_source'], brief='Link to the bot\'s source code.', description='Post a link to the Github repository for this bot into the chat.')
 async def botsource(ctx):
-	await ctx.send(_botsource_url)
+	await ctx.reply(_botsource_url)
 
 @bot.command(brief = 'Show a random nonexistant metal album.', description = 'Randomly chooses one of the AI-generated metal albums (including band name, album title, and album cover art) from Twitter account @ai_metal_bot.')
 async def metal(ctx):
 	a = cursor.execute('SELECT tweetid, band, album FROM albums ORDER BY RANDOM() LIMIT 1').fetchone()
 	file = discord.File(os.path.join(_album_folder, f'{a[0]}.png'), filename = 'albumcover.png')
-	embed = discord.Embed(title = f'Metal Album for {ctx.author.display_name}', description = f'Band: {a[1]}\nAlbum: {a[2]}')
+	embed = discord.Embed(title = a[2], description = f'Band: {a[1]}')
 	embed.set_image(url = 'attachment://albumcover.png')
-	await ctx.send(file = file, embed = embed)
+	await ctx.reply(file = file, embed = embed)
 
 @bot.command(hidden = True, aliases = [ 'add_abbr' ], description = 'Adds a new abbreviated form of show type to the list.', brief = 'Adds a new abbreviated form of show type to the list.')
 @commands.is_owner()
 async def addabbr(ctx, abbr, *, term):
 	_showtypes[abbr.upper()] = term
 	_save_config()
-	await ctx.send(f'Added {abbr.upper()} as an abbreviated show type for "{term}"')
+	await ctx.reply(f'Added {abbr.upper()} as an abbreviated show type for "{term}"')
 
 @bot.command(hidden = True, aliases = [ 'get_abbr' ], brief = 'Show current abbreviated show types.', description = 'Show current abbreviated show types. If you specify an abbreviation, only shows that (if it exists).')
 @commands.is_owner()
 async def getabbr(ctx, abbr = None):
 	if abbr == None:
-		await ctx.send(embed = discord.Embed(title = 'Current Abbreviations', description = '\n'.join(map(lambda x: f'{x}: {_showtypes[x]}', sorted(_showtypes.keys())))))
+		await ctx.reply(embed = discord.Embed(title = 'Current Abbreviations', description = '\n'.join(map(lambda x: f'{x}: {_showtypes[x]}', sorted(_showtypes.keys())))))
 	elif abbr.upper() in _showtypes:
-		await ctx.send(f'{abbr.upper()} is an abbreviation for "{_showtypes[abbr.upper()]}"')
+		await ctx.reply(f'{abbr.upper()} is an abbreviation for "{_showtypes[abbr.upper()]}"')
 	else:
-		await ctx.send(f'{abbr.upper()} is not currently an abbreviation.')
+		await ctx.reply(f'{abbr.upper()} is not currently an abbreviation.')
 
 @bot.command(hidden = True, aliases = [ 'del_abbr' ], description = 'Delete an abbreviated show type.', brief = 'Delete an abbreviated show type.')
 @commands.is_owner()
 async def delabbr(ctx, abbr):
 	if abbr.upper() in _showtypes:
 		del _showtypes[abbr.upper()]
-		await ctx.send(f'Deleted {abbr.upper()}.')
+		await ctx.reply(f'Deleted {abbr.upper()}.')
 	else:
-		await ctx.send(f'{abbr.upper()} is not currently an abbreviation.')
+		await ctx.reply(f'{abbr.upper()} is not currently an abbreviation.')
 
 @bot.command(aliases = [ 'rpg_status' ], brief = 'Status of show-related RPGs', description = 'Lists the show-related RPGs together with their current status.')
 async def rpgstatus(ctx):
-	await ctx.send(embed = discord.Embed(title = 'Status of RPGs', description = '\n'.join(map(lambda x: f'*{x}* : {_rpg_status[x]}', sorted(_rpg_status.keys())))))
+	await ctx.reply(embed = discord.Embed(title = 'Status of RPGs', description = '\n'.join(map(lambda x: f'*{x}* : {_rpg_status[x]}', sorted(_rpg_status.keys())))))
 
 @bot.command(aliases = [ 'set_rpgstatus', 'set_rpg_status' ], brief = 'Set the status of a show-related RPG (restricted).', description = 'Set the status of a show-related RPG, or add it if it wasn\'t already present. If the status is set to DELETE, the RPG is deleted from the list instead. (Only available to authorized users.)\nNote: Names of RPGs are case-sensitive.')
 @commands.check_any(commands.is_owner(), _is_guild_owner())
 async def setrpgstatus(ctx, rpg, *, status):
 	if len(status) == 0:
-		await ctx.send('RPG status is not allowed to be blank.')
+		await ctx.reply('RPG status is not allowed to be blank.')
 	elif rpg in _rpg_status:
 		if status == 'DELETE':
 			del _rpg_status[rpg]
 			_save_config()
-			await ctx.send(f'Deleted {rpg} from the list.')
+			await ctx.reply(f'Deleted {rpg} from the list.')
 		else:
 			_rpg_status[rpg] = status
 			_save_config()
-			await ctx.send(f'Changed the status of {rpg} to {status}')
+			await ctx.reply(f'Changed the status of {rpg} to {status}')
 	elif status == 'DELETE':
-		await ctx.send(f'There is no RPG named {rpg}, so it cannot be deleted.')
+		await ctx.reply(f'There is no RPG named {rpg}, so it cannot be deleted.')
 	else:
 		_rpg_status[rpg] = status
 		_save_config()
-		await ctx.send(f'Added {rpg} with status {status}')
+		await ctx.reply(f'Added {rpg} with status {status}')
 
 @bot.command(hidden = True, aliases = [ 'op_help', 'modhelp', 'mod_help' ], description = 'List all hidden commands.', brief = 'List all hidden commands.')
 @commands.check_any(commands.is_owner(), _is_guild_owner())
 async def ophelp(ctx):
-	await ctx.send('```Type ~help for a list of visible commands, type ~ophelp for a list of hidden commands.\n\n' + '\n'.join(map(lambda x: f'  {x.name}\t{x.brief}', filter(lambda x: x.hidden, sorted(bot.commands, key = lambda x: x.name)))) + '```')
+	await ctx.reply('```Type ~help for a list of visible commands, type ~ophelp for a list of hidden commands.\n\n' + '\n'.join(map(lambda x: f'  {x.name}\t{x.brief}', filter(lambda x: x.hidden, sorted(bot.commands, key = lambda x: x.name)))) + '```')
+
+@bot.command(aliases = [ 'quote_search' ], brief = 'Search the quote database.', description = 'Search the quote database by content of the quotes (case-insensitive). If multiple results are found, one is returned at random unless one of the supplied terms is `--all` in which case a list of quote numbers is returned and the term `--all` is removed from the search terms. All search terms must be present in order for a given quote to be considered a result.')
+async def quotesearch(ctx, *args):
+	if len(args) == 0 or (len(args) == 1 and args[0].lower() == '--all'):
+		await ctx.reply('You must supply search terms to conduct a search.')
+	else:
+		terms = [ x.lower() for x in args ]
+		if '--all' in terms:
+			terms.remove('--all')
+			nums = list(itertools.chain.from_iterable(cursor.execute(f'SELECT ROWID FROM quotes WHERE {" AND ".join([ "LOWER(message) LIKE ?" ] * len(terms))}', list(map(lambda x: f'%{x}%', terms))).fetchall()))
+			if len(nums) == 0:
+				await ctx.reply('There are no quotes matching those search terms.')
+			else:
+				await ctx.reply(embed = discord.Embed(title = f'{len(nums)} Quote{"" if len(nums) == 1 else "s"} Matching Search Terms', description = ', '.join(_rangeify(nums))))
+		else:
+			q = cursor.execute(f'SELECT ROWID, user, message, date_added FROM quotes WHERE {" AND ".join([ "LOWER(message) LIKE ?" ] * len(terms))} ORDER BY RANDOM() LIMIT 1', list(map(lambda x: f'%{x}%', terms))).fetchone()
+			if q:
+				await ctx.reply(embed = format_quote(q))
+			else:
+				await ctx.reply('There are no quotes matching those search terms.')
 
 @bot.listen('on_message')
 async def do_reactions(message):
