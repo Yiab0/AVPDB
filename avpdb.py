@@ -464,7 +464,7 @@ async def reactions(ctx):
 		f'\n{random.choice(_fruit_emoji)}  If you mention chicken'
 		f'\n{_reaction_patterns["spicybeef"]}  If you mention beef'
 		f'\n{_reaction_patterns["interviewplant"]}  If you mention an interview'
-		f'\n{_reaction_patterns["Bombadil"]}  If you mention Tom Bombadil'
+		f'\n{_reaction_patterns["Bombadil"]}  If you call Tom Bombadil in Russian'
 		'\nA pain scale reaction if you use the format pain~*n* (where *n* is a number from 0 to 10)'
 	)))
 
@@ -840,7 +840,7 @@ async def do_reactions(message):
 		await message.add_reaction(_reaction_patterns['Blobbyrape'])
 	if re.search('interview', txt):
 		await message.add_reaction(_reaction_patterns['interviewplant'])
-	if re.search('bombadil', txt):
+	if re.search('том бомбадилло', txt):
 		await message.add_reaction(_reaction_patterns['Bombadil'])
 
 @bot.listen('on_raw_reaction_add')
