@@ -428,7 +428,7 @@ async def logoff(ctx):
 	print(f"{_dt_tostr()} Quitting as instructed by {str(ctx.author)}.")
 	db.close()
 	_save_config()
-	await bot.logout()
+	await bot.close()
 
 @bot.command(brief="Display a random dog photo.", help="Find a random photo of a dog through https://thedogapi.com/ or https://dog.ceo/dog-api and display it in chat.")
 async def dog(ctx):
