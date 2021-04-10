@@ -68,7 +68,7 @@ _last_connect = datetime.datetime.now(dateutil.tz.UTC)
 _total_uptime = pickle.loads(bytes.fromhex(_params.get('TotalUptime')))
 _goosecifix_url = _params.get("GoosecifixURL")
 _showtypes = json.loads(_params['ShowTypes'])
-_reaction_patterns = { "Blobbyrape": None, "HONK": None, "Kay": None, "lee": None, "God": None, "spicybeef": None, 'Hesquatch': None, 'Goveganmotherfuckers': None, 'Tim_Noah': None, 'Oogene': None, 'interviewplant': None }
+_reaction_patterns = { "Blobbyrape": None, "HONK": None, "Kay": None, "lee": None, "God": None, "spicybeef": None, 'Hesquatch': None, 'Goveganmotherfuckers': None, 'Tim_Noah': None, 'Oogene': None, 'interviewplant': None, 'Bombadil': None }
 _fruit_emoji = [ '\N{Green Apple}', '\N{Red Apple}', '\N{Pear}', '\N{Tangerine}', '\N{Lemon}', '\N{Banana}', '\N{Watermelon}', '\N{Grapes}', '\N{Blueberries}', '\N{Strawberry}', '\N{Melon}', '\N{Cherries}', '\N{Peach}', '\N{Mango}', '\N{Pineapple}', '\N{Kiwifruit}', '\N{Tomato}', '\N{Coconut}', '\N{Chicken}', '\N{Avocado}', '\N{Olive}' ]
 _autosave_timer = int(_params.get("AutosaveConfigTimer"))
 _active_links = '\n'.join(map(lambda x: f'{x[0]}: {x[1]}', json.loads(_params['active links'])))
@@ -464,6 +464,7 @@ async def reactions(ctx):
 		f'\n{random.choice(_fruit_emoji)}  If you mention chicken'
 		f'\n{_reaction_patterns["spicybeef"]}  If you mention beef'
 		f'\n{_reaction_patterns["interviewplant"]}  If you mention an interview'
+		f'\n{_reaction_patterns["Bombadil"]}  If you mention Tom Bombadil'
 		'\nA pain scale reaction if you use the format pain~*n* (where *n* is a number from 0 to 10)'
 	)))
 
@@ -839,6 +840,8 @@ async def do_reactions(message):
 		await message.add_reaction(_reaction_patterns['Blobbyrape'])
 	if re.search('interview', txt):
 		await message.add_reaction(_reaction_patterns['interviewplant'])
+	if re.search('bombadil', txt):
+		await message.add_reaction(_reaction_patterns['Bombadil'])
 
 @bot.listen('on_raw_reaction_add')
 async def quote_by_reaction(payload):
