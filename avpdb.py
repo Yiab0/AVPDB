@@ -126,6 +126,7 @@ cursor.execute("CREATE TABLE IF NOT EXISTS smells(name TEXT UNIQUE)")
 cursor.execute("CREATE TABLE IF NOT EXISTS perversions(name TEXT UNIQUE, description TEXT)")
 cursor.execute('CREATE TABLE IF NOT EXISTS users(name TEXT PRIMARY KEY, timezone TEXT)')
 cursor.execute('CREATE TABLE IF NOT EXISTS albums(tweetid INTEGER PRIMARY KEY, band TEXT, album TEXT)')
+cursor.execute('CREATE TABLE IF NOT EXISTS rapescenes(datetime TEXT)')
 print(f"{_dt_tostr()} Loaded quote database.")
 
 db.commit()
@@ -272,6 +273,31 @@ async def on_ready() -> None:
 	for e in bot.emojis:
 		if e.name in _reaction_patterns:
 			_reaction_patterns[e.name] = e
+
+@bot.command(aliases = [ 'log_rape' ], help = 'Logs that a rape scene was seen.')
+async def logrape(ctx):
+	global _timestamp_unzoned
+	cursor.execute('INSERT INTO rapescenes VALUES(?)',(datetime.datetime.utcnow().strftime(_timestamp_unzoned),))
+	await ctx.reply('Logged.')
+	db.commit()
+
+@bot.command(aliases = [ 'rape_check', 'check_rape', 'checkrape' ], help = 'How long since the last rape scene?')
+async def rapecheck(ctx):
+	global _timestamp_unzoned
+	q = cursor.execute('SELECT datetime FROM rapescenes ORDER BY datetime DESC LIMIT 1').fetchone()[0]
+	p = datetime.datetime.strptime(q, _timestamp_unzoned)
+	c = datetime.datetime.utcnow()
+	await ctx.reply(f'It has been {(c-p).days} days since the last rape scene on AVPSO.')
+
+@bot.command(aliases = [ 'rapeless_record' ], help = 'The longest amount of time we have gone between rape scenes so far.')
+async def rapelessrecord(ctx):
+	global _timestamp_unzoned
+	q = cursor.execute('SELECT datetime FROM rapescenes ORDER BY datetime').fetchall()
+	p = list(map(lambda x: datetime.datetime.strptime(x[0], _timestamp_unzoned), q))
+	d = 0
+	for i in range(len(p)-1):
+		d = max(d, (p[i+1]-p[i]).days)
+	await ctx.reply(f'The longest time between rape scenes so far is {max(d, (datetime.datetime.utcnow()-p[-1]).days)} days.')
 
 @bot.command(aliases=['add_alias'], brief="Adds an alias for a user.", help="Adds an alias for a user. The alias must be alphamuneric and begin with a letter. Aliases are not case sensitive.")
 async def addalias(ctx, alias, username):
